@@ -1,10 +1,67 @@
 import { Channel, Socket } from 'phoenix';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dimensions, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const { height } = Dimensions.get('screen');
 
 const App = () => {
+  const [authorName, setAuthorName] = useState('');
+  const [roomName, setRoomName] = useState('');
+
+  const onSubmit = useCallback((authorName, roomName) => {
+    setAuthorName(authorName)
+    setRoomName(roomName)
+  }, [])
+
+  return authorName === '' || roomName === '' ? <Form onSubmit={onSubmit} /> : <Chat authorName={authorName} roomName={roomName} />
+};
+
+type FormProps = {
+  onSubmit: any
+}
+
+const Form = ({ onSubmit }: FormProps) => {
+  const [authorName, setAuthorName] = useState('');
+  const [roomName, setRoomName] = useState('');
+
+  return (
+    <View style={styles.container}>
+      <View style={{
+        flexDirection: 'row',
+        padding: 50
+      }}>
+        <TextInput style={{
+          borderWidth: 1,
+          borderColor: 'black'
+        }}
+          placeholder={'Your name'}
+          onChangeText={text => {
+            setAuthorName(text)
+          }}
+        />
+
+        <TextInput style={{
+          borderWidth: 1,
+          borderColor: 'black'
+        }}
+          placeholder={'Where do you want to talk talk to ?'}
+          onChangeText={text => {
+            setRoomName(text)
+          }}
+        />
+      </View>
+
+      <Button onPress={() => onSubmit(authorName, roomName)} title='Submit' />
+    </View>
+  );
+}
+
+type ChatProps = {
+  authorName: string
+  roomName: string
+}
+
+const Chat = ({ authorName, roomName }: ChatProps) => {
   const [serverState, setServerState] = useState('Loading...');
   const [messageText, setMessageText] = useState('');
   const [disableButton, setDisableButton] = useState(true);
@@ -17,14 +74,14 @@ const App = () => {
   useEffect(() => {
     const serverMessagesList: String[] = []
 
-    socket.current = new Socket('ws://localhost:4000/socket')
+    socket.current = new Socket('ws://localhost:4000/socket', { params: { authorName } })
     const currentSocket = socket.current
     currentSocket.connect()
 
-    channel.current = currentSocket.channel('room:lobby')
+    channel.current = currentSocket.channel(`room:${roomName}`)
     channel.current.join()
       .receive('ok', () => {
-        setServerState('Connected to the server')
+        setServerState(`Connecté en tant que ${authorName} sur ${roomName}`)
         setDisableButton(false);
       })
       .receive('timeout', () => {
@@ -97,8 +154,7 @@ const App = () => {
 
     </View >
   );
-};
-
+}
 const styles = StyleSheet.create({
   container: {
     height,
